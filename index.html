@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Xime's Closet — Outfit Optimizer</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,700;1,400;1,500&family=DM+Mono:wght@300;400;500&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --charcoal:   #2D2D2D;
+    --white:      #FFFFFF;
+    --brown:      #775537;
+    --light-gray: #F1F1F1;
+    --yellow:     #FBE29D;
+    --sage-light: #C0DDDA;
+    --sage-mid:   #A9BDBA;
+    --tan:        #A68A73;
+    --cream:      #F9F1E3;
+    --teal:       #5B8C85;
+    --brown-mid:  #8E7665;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'Jost', sans-serif;
+    background: var(--cream);
+    color: var(--charcoal);
+    min-height: 100vh;
+    position: relative;
+  }
+
+  /* subtle paper texture overlay */
+  body::before {
+    content: '';
+    position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    background-image:
+      radial-gradient(ellipse 80% 60% at 10% 0%, rgba(192,221,218,0.18) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 80% at 90% 100%, rgba(251,226,157,0.14) 0%, transparent 60%);
+  }
+
+  /* ── LAYOUT ── */
+  .app { position: relative; z-index: 1; max-width: 960px; margin: 0 auto; padding: 0 28px 80px; }
+
+  /* ── HEADER ── */
+  .header {
+    display: flex; align-items: flex-end; justify-content: space-between;
+    padding: 36px 0 28px;
+    border-bottom: 1px solid var(--tan);
+    margin-bottom: 0;
+  }
+  .logo-block { display: flex; flex-direction: column; gap: 4px; }
+  .logo-word {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 52px; font-weight: 400; letter-spacing: 0.12em;
+    color: var(--charcoal); line-height: 1;
+  }
+  .logo-word span { color: var(--brown); font-style: italic; }
+  .logo-tagline {
+    font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 0.35em;
+    text-transform: uppercase; color: var(--teal);
+  }
+  .nn-pill {
+    font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 0.18em;
+    text-transform: uppercase; color: var(--white);
+    background: var(--teal); padding: 8px 16px;
+    border-radius: 40px; align-self: center;
+  }
+
+  /* ── TABS ── */
+  .tabs {
+    display: flex; gap: 0;
+    border-bottom: 1px solid rgba(119,85,55,0.2);
+    margin-bottom: 36px; background: var(--cream);
+    position: sticky; top: 0; z-index: 10;
+    padding-top: 2px;
+  }
+  .tab {
+    font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.2em;
+    text-transform: uppercase; padding: 16px 28px; color: var(--brown-mid);
+    cursor: pointer; border: none; background: none;
+    border-bottom: 2px solid transparent; transition: all 0.22s;
+  }
+  .tab:hover { color: var(--charcoal); }
+  .tab.active { color: var(--brown); border-bottom-color: var(--brown); }
+
+  /* ── PANELS ── */
+  .panel { display: none; animation: fadeUp 0.28s ease; }
+  .panel.active { display: block; }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* ── SECTION LABEL ── */
+  .section-label {
+    font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 0.35em;
+    text-transform: uppercase; color: var(--teal); margin-bottom: 18px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .section-label::after { content: ''; flex: 1; height: 1px; background: rgba(91,140,133,0.25); }
+
+  /* ── ADD FORM ── */
+  .add-form {
+    background: var(--white); border: 1px solid rgba(119,85,55,0.15);
+    padding: 28px 28px 24px; border-radius: 6px;
+    margin-bottom: 36px;
+    box-shadow: 0 2px 12px rgba(45,45,45,0.05);
+  }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-group label {
+    font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 0.2em;
+    text-transform: uppercase; color: var(--brown-mid);
+  }
+  .form-group input, .form-group select {
+    background: var(--cream); border: 1px solid rgba(119,85,55,0.25);
+    color: var(--charcoal); padding: 11px 14px;
+    font-family: 'Jost', sans-serif; font-size: 14px;
+    outline: none; border-radius: 4px; transition: border-color 0.2s;
+    -webkit-appearance: none;
+  }
+  .form-group input::placeholder { color: var(--tan); }
+  .form-group input:focus, .form-group select:focus { border-color: var(--teal); }
+  .form-group select option { background: var(--white); }
+
+  /* ── BUTTONS ── */
+  .btn {
+    font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.18em;
+    text-transform: uppercase; padding: 12px 24px; cursor: pointer;
+    border-radius: 4px; transition: all 0.2s;
+  }
+  .btn-primary { background: var(--brown); color: var(--white); border: none; }
+  .btn-primary:hover { background: #8A6342; transform: translateY(-1px); box-shadow: 0 4px 16px rgba(119,85,55,0.3); }
+  .btn-primary:active { transform: translateY(0); }
+  .btn-ghost { background: transparent; color: var(--brown); border: 1px solid var(--brown); }
+  .btn-ghost:hover { background: rgba(119,85,55,0.08); }
+  .btn-teal { background: var(--teal); color: var(--white); border: none; width: 100%; }
+  .btn-teal:hover { background: #4E7D76; transform: translateY(-1px); box-shadow: 0 4px 16px rgba(91,140,133,0.35); }
+  .btn-sm-danger {
+    font-family: 'DM Mono', monospace; font-size: 8px; letter-spacing: 0.15em;
+    text-transform: uppercase; padding: 5px 10px; cursor: pointer;
+    border-radius: 3px; background: transparent;
+    color: #B05555; border: 1px solid #C87070; transition: all 0.18s;
+  }
+  .btn-sm-danger:hover { background: rgba(176,85,85,0.08); }
+
+  /* ── WARDROBE GRID ── */
+  .wardrobe-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+    gap: 14px; margin-bottom: 32px;
+  }
+  .clothing-card {
+    background: var(--white); border: 1px solid rgba(166,138,115,0.25);
+    padding: 20px 16px 16px; border-radius: 6px;
+    transition: all 0.22s; position: relative;
+    box-shadow: 0 1px 4px rgba(45,45,45,0.04);
+  }
+  .clothing-card:hover { border-color: var(--tan); box-shadow: 0 4px 18px rgba(45,45,45,0.10); transform: translateY(-2px); }
+  .clothing-card .c-emoji { font-size: 34px; display: block; margin-bottom: 10px; }
+  .clothing-card .c-name { font-size: 13px; font-weight: 500; color: var(--charcoal); margin-bottom: 3px; line-height: 1.3; }
+  .clothing-card .c-meta { font-family: 'DM Mono', monospace; font-size: 8px; color: var(--brown-mid); letter-spacing: 0.1em; margin-bottom: 8px; }
+  .style-pill {
+    display: inline-block; font-family: 'DM Mono', monospace; font-size: 8px;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    padding: 3px 8px; border-radius: 20px;
+    background: rgba(91,140,133,0.12); color: var(--teal);
+    margin-bottom: 10px;
+  }
+
+  /* ── OPTIMIZER LAYOUT ── */
+  .optimizer-layout { display: grid; grid-template-columns: 1fr 1.45fr; gap: 24px; align-items: start; }
+
+  /* ── CONTEXT PANEL ── */
+  .context-panel {
+    background: var(--white); border: 1px solid rgba(166,138,115,0.25);
+    padding: 26px; border-radius: 6px;
+    box-shadow: 0 1px 4px rgba(45,45,45,0.05);
+  }
+  .ctx-group { margin-bottom: 22px; }
+  .ctx-label {
+    font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 0.25em;
+    text-transform: uppercase; color: var(--teal); margin-bottom: 10px; display: block;
+  }
+  .pills { display: flex; flex-wrap: wrap; gap: 7px; }
+  .pill {
+    font-family: 'DM Mono', monospace; font-size: 8px; letter-spacing: 0.12em;
+    text-transform: uppercase; padding: 7px 13px; cursor: pointer;
+    border: 1px solid rgba(166,138,115,0.35); color: var(--brown-mid);
+    border-radius: 40px; background: none; transition: all 0.18s;
+  }
+  .pill:hover { border-color: var(--tan); color: var(--charcoal); }
+  .pill.active { border-color: var(--brown); color: var(--white); background: var(--brown); }
+
+  /* ── NEURAL VIZ ── */
+  .neural-block { margin-top: 18px; }
+  .neural-label {
+    font-family: 'DM Mono', monospace; font-size: 8px; letter-spacing: 0.25em;
+    text-transform: uppercase; color: var(--tan); margin-bottom: 8px; display: block;
+  }
+  .neural-bars {
+    display: flex; gap: 3px; align-items: flex-end;
+    height: 48px; background: var(--cream);
+    border: 1px solid rgba(166,138,115,0.18);
+    border-radius: 4px; padding: 6px 8px; overflow: hidden;
+  }
+  .n-bar {
+    flex: 1; border-radius: 2px; transition: height 0.5s ease, background 0.4s ease;
+    background: rgba(91,140,133,0.2); min-height: 2px;
+  }
+
+  /* ── RESULT CARD ── */
+  .result-card {
+    background: var(--white); border: 1px solid rgba(166,138,115,0.25);
+    border-radius: 6px; overflow: hidden;
+    box-shadow: 0 1px 4px rgba(45,45,45,0.05); min-height: 420px;
+  }
+  .result-top-bar {
+    background: var(--cream); border-bottom: 1px solid rgba(166,138,115,0.2);
+    padding: 14px 24px;
+    font-family: 'DM Mono', monospace; font-size: 8px;
+    letter-spacing: 0.3em; text-transform: uppercase; color: var(--tan);
+  }
+  .result-body { padding: 24px; }
+
+  .placeholder {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 340px; gap: 14px; text-align: center;
+  }
+  .placeholder-icon {
+    width: 64px; height: 64px; border-radius: 50%;
+    background: var(--sage-light); display: flex; align-items: center;
+    justify-content: center; font-size: 28px; opacity: 0.7;
+  }
+  .placeholder p { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 0.2em; color: var(--tan); text-transform: uppercase; }
+
+  .outfit-result { display: none; }
+  .outfit-result.show { display: block; }
+
+  .outfit-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 20px; }
+  .outfit-name {
+    font-family: 'Playfair Display', serif; font-size: 24px;
+    font-style: italic; color: var(--charcoal); line-height: 1.2;
+  }
+  .score-block { text-align: right; }
+  .score-num { font-family: 'Playfair Display', serif; font-size: 36px; font-weight: 400; color: var(--teal); line-height: 1; }
+  .score-tag { font-family: 'DM Mono', monospace; font-size: 7px; letter-spacing: 0.25em; text-transform: uppercase; color: var(--tan); }
+
+  .pieces-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+  .piece-chip {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--cream); border: 1px solid rgba(166,138,115,0.25);
+    padding: 8px 14px; border-radius: 40px;
+  }
+  .piece-chip .pe { font-size: 18px; }
+  .piece-chip .pn { font-size: 12px; color: var(--charcoal); font-weight: 400; }
+
+  .ai-block { background: var(--cream); border-radius: 6px; padding: 18px; border-left: 3px solid var(--teal); }
+  .ai-header { font-family: 'DM Mono', monospace; font-size: 8px; letter-spacing: 0.3em; text-transform: uppercase; color: var(--teal); margin-bottom: 10px; }
+  .ai-text { font-family: 'Playfair Display', serif; font-size: 14px; font-style: italic; line-height: 1.75; color: #4A4040; }
+  .ai-text .cursor { display: inline-block; width: 2px; height: 14px; background: var(--teal); animation: blink 0.8s steps(1) infinite; vertical-align: middle; }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  .dots { display: inline-flex; gap: 4px; align-items: center; }
+  .dots span {
+    width: 5px; height: 5px; border-radius: 50%; background: var(--teal);
+    animation: dp 1.2s ease-in-out infinite;
+  }
+  .dots span:nth-child(2) { animation-delay: 0.2s; }
+  .dots span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes dp { 0%,80%,100%{opacity:0.2;transform:scale(0.7)} 40%{opacity:1;transform:scale(1)} }
+
+  .result-actions { display: flex; gap: 10px; margin-top: 20px; }
+
+  /* ── ACCENT BAR ── */
+  .accent-divider {
+    height: 3px; border-radius: 2px; margin: 16px 0;
+    background: linear-gradient(90deg, var(--yellow) 0%, var(--sage-light) 50%, var(--tan) 100%);
+  }
+
+  /* ── HISTORY ── */
+  .history-list { display: flex; flex-direction: column; gap: 12px; }
+  .history-item {
+    background: var(--white); border: 1px solid rgba(166,138,115,0.2);
+    border-radius: 6px; padding: 18px 22px;
+    display: flex; align-items: center; gap: 18px;
+    box-shadow: 0 1px 4px rgba(45,45,45,0.04);
+    transition: all 0.2s;
+  }
+  .history-item:hover { border-color: var(--tan); box-shadow: 0 4px 14px rgba(45,45,45,0.08); }
+  .h-emojis { font-size: 24px; display: flex; gap: 2px; }
+  .h-info { flex: 1; }
+  .h-name { font-family: 'Playfair Display', serif; font-size: 17px; font-style: italic; color: var(--charcoal); margin-bottom: 4px; }
+  .h-meta { font-family: 'DM Mono', monospace; font-size: 8px; letter-spacing: 0.12em; color: var(--tan); text-transform: uppercase; }
+  .h-ctx { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+  .h-tag {
+    font-family: 'DM Mono', monospace; font-size: 7px; letter-spacing: 0.1em;
+    text-transform: uppercase; padding: 3px 8px;
+    background: rgba(192,221,218,0.3); color: var(--teal);
+    border-radius: 20px;
+  }
+  .h-score { font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 400; color: var(--teal); }
+
+  .empty-state { text-align: center; padding: 70px 0; display: flex; flex-direction: column; align-items: center; gap: 14px; }
+  .empty-icon { font-size: 44px; opacity: 0.25; }
+  .empty-state p { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 0.25em; color: var(--tan); text-transform: uppercase; }
+
+  /* ── YELLOW ACCENT CARD ── */
+  .yellow-note {
+    background: var(--yellow); border-radius: 6px;
+    padding: 14px 18px; margin-bottom: 20px;
+    font-family: 'DM Mono', monospace; font-size: 9px;
+    letter-spacing: 0.12em; color: var(--brown);
+    display: flex; align-items: center; gap: 10px;
+  }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 680px) {
+    .optimizer-layout { grid-template-columns: 1fr; }
+    .form-grid { grid-template-columns: 1fr; }
+    .logo-word { font-size: 38px; }
+    .result-card { min-height: auto; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="logo-block">
+      <div class="logo-word">Xime's<span> Closet</span></div>
+      <div class="logo-tagline">Adaptive Neural Stylist &nbsp;·&nbsp; v1.0</div>
+    </div>
+    <div class="nn-pill">Red Neuronal Activa ✦</div>
+  </header>
+
+  <!-- TABS -->
+  <nav class="tabs">
+    <button class="tab active" onclick="switchTab('wardrobe', this)">Armario</button>
+    <button class="tab" onclick="switchTab('optimizer', this)">Optimizar</button>
+    <button class="tab" onclick="switchTab('history', this)">Historial</button>
+  </nav>
+
+  <!-- ══ ARMARIO ══ -->
+  <section id="tab-wardrobe" class="panel active">
+
+    <p class="section-label">Añadir prenda</p>
+    <div class="add-form">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Nombre de la prenda</label>
+          <input type="text" id="new-name" placeholder="ej. Blazer negro satinado" />
+        </div>
+        <div class="form-group">
+          <label>Tipo de prenda</label>
+          <select id="new-type">
+            <option value="">Seleccionar...</option>
+            <option value="top">Top / Camiseta</option>
+            <option value="blusa">Blusa</option>
+            <option value="sueter">Suéter</option>
+            <option value="blazer">Blazer / Saco</option>
+            <option value="pantalon">Pantalón</option>
+            <option value="jeans">Jeans</option>
+            <option value="falda">Falda</option>
+            <option value="vestido">Vestido</option>
+            <option value="zapatos">Zapatos</option>
+            <option value="tenis">Tenis</option>
+            <option value="accesorio">Accesorio</option>
+            <option value="abrigo">Abrigo / Chamarra</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Color principal</label>
+          <select id="new-color">
+            <option value="">Seleccionar...</option>
+            <option value="negro">Negro</option>
+            <option value="blanco">Blanco</option>
+            <option value="beige">Beige / Crema</option>
+            <option value="gris">Gris</option>
+            <option value="azul marino">Azul marino</option>
+            <option value="azul cielo">Azul cielo</option>
+            <option value="rojo">Rojo</option>
+            <option value="verde">Verde</option>
+            <option value="café">Café / Marrón</option>
+            <option value="rosa">Rosa</option>
+            <option value="amarillo">Amarillo</option>
+            <option value="morado">Morado</option>
+            <option value="terracota">Terracota</option>
+            <option value="salvia">Verde salvia</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Estilo</label>
+          <select id="new-style">
+            <option value="">Seleccionar...</option>
+            <option value="casual">Casual</option>
+            <option value="formal">Formal</option>
+            <option value="streetwear">Streetwear</option>
+            <option value="elegante">Elegante</option>
+            <option value="deportivo">Deportivo / Athleisure</option>
+            <option value="boho">Boho / Romántico</option>
+            <option value="minimalista">Minimalista</option>
+            <option value="vintage">Vintage</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="addClothing()">+ Añadir al armario</button>
+    </div>
+
+    <p class="section-label">Mi armario <span id="count-badge" style="font-style:italic;color:var(--brown);margin-left:4px;"></span></p>
+    <div class="wardrobe-grid" id="wardrobe-grid"></div>
+    <div class="empty-state" id="empty-wardrobe" style="display:none;">
+      <div class="empty-icon">🧺</div>
+      <p>Tu armario está vacío — añade prendas arriba</p>
+    </div>
+  </section>
+
+  <!-- ══ OPTIMIZAR ══ -->
+  <section id="tab-optimizer" class="panel">
+    <div class="optimizer-layout">
+
+      <!-- LEFT: context -->
+      <div>
+        <div class="context-panel">
+          <p class="section-label" style="margin-bottom:20px;">Contexto del día</p>
+
+          <div class="ctx-group">
+            <span class="ctx-label">Ocasión</span>
+            <div class="pills">
+              <button class="pill" data-group="ocasion" data-val="trabajo">Trabajo</button>
+              <button class="pill" data-group="ocasion" data-val="casual">Casual</button>
+              <button class="pill" data-group="ocasion" data-val="cita">Cita</button>
+              <button class="pill" data-group="ocasion" data-val="fiesta">Fiesta</button>
+              <button class="pill" data-group="ocasion" data-val="ejercicio">Ejercicio</button>
+              <button class="pill" data-group="ocasion" data-val="evento formal">Evento formal</button>
+            </div>
+          </div>
+
+          <div class="ctx-group">
+            <span class="ctx-label">Clima</span>
+            <div class="pills">
+              <button class="pill" data-group="clima" data-val="caluroso">Caluroso ☀️</button>
+              <button class="pill" data-group="clima" data-val="templado">Templado 🌤</button>
+              <button class="pill" data-group="clima" data-val="fresco">Fresco 🌬</button>
+              <button class="pill" data-group="clima" data-val="frío">Frío 🧣</button>
+              <button class="pill" data-group="clima" data-val="lluvioso">Lluvioso 🌧</button>
+            </div>
+          </div>
+
+          <div class="ctx-group">
+            <span class="ctx-label">Vibe del día</span>
+            <div class="pills">
+              <button class="pill" data-group="vibe" data-val="poderosa">Poderosa 💪</button>
+              <button class="pill" data-group="vibe" data-val="relajada">Relajada 😌</button>
+              <button class="pill" data-group="vibe" data-val="creativa">Creativa 🎨</button>
+              <button class="pill" data-group="vibe" data-val="romántica">Romántica 🌸</button>
+              <button class="pill" data-group="vibe" data-val="misteriosa">Misteriosa 🖤</button>
+              <button class="pill" data-group="vibe" data-val="minimalista">Minimalista ◻️</button>
+            </div>
+          </div>
+
+          <div class="accent-divider"></div>
+          <button class="btn btn-teal" onclick="generateOutfit()">Generar outfit ✦</button>
+
+          <!-- Neural Activation -->
+          <div class="neural-block" style="margin-top:20px;">
+            <span class="neural-label">Activación de la red neuronal</span>
+            <div class="neural-bars" id="neural-bars"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: result -->
+      <div>
+        <div class="result-card">
+          <div class="result-top-bar">✦ &nbsp; Outfit generado por Xime's Closet Neural Engine</div>
+          <div class="result-body">
+            <div class="placeholder" id="result-placeholder">
+              <div class="placeholder-icon">👗</div>
+              <p>Selecciona contexto y<br>genera tu outfit</p>
+            </div>
+
+            <div class="outfit-result" id="outfit-result">
+              <div class="outfit-header">
+                <div>
+                  <p style="font-family:'DM Mono',monospace;font-size:8px;letter-spacing:0.3em;text-transform:uppercase;color:var(--tan);margin-bottom:6px;">outfit sugerido</p>
+                  <div class="outfit-name" id="outfit-name">—</div>
+                </div>
+                <div class="score-block">
+                  <div class="score-num" id="score-num">—</div>
+                  <div class="score-tag">Compatibilidad</div>
+                </div>
+              </div>
+
+              <div class="pieces-row" id="pieces-row"></div>
+
+              <div class="ai-block">
+                <div class="ai-header">✦ &nbsp; Análisis de la red neuronal</div>
+                <div class="ai-text" id="ai-text">
+                  <span class="dots" id="loading-dots" style="display:none;"><span></span><span></span><span></span></span>
+                  <span id="ai-text-content"></span>
+                </div>
+              </div>
+
+              <div class="result-actions">
+                <button class="btn btn-ghost" onclick="generateOutfit()">Regenerar</button>
+                <button class="btn btn-primary" id="save-btn" onclick="saveOutfit()">Guardar outfit</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ HISTORIAL ══ -->
+  <section id="tab-history" class="panel">
+    <p class="section-label">Outfits guardados</p>
+    <div class="history-list" id="history-list"></div>
+    <div class="empty-state" id="empty-history" style="display:none;">
+      <div class="empty-icon">🗂</div>
+      <p>No hay outfits guardados aún</p>
+    </div>
+  </section>
+
+</div><!-- /app -->
+
+<script>
+/* ─── DATA ─── */
+const EMOJI_MAP = {
+  top:'👕', blusa:'👚', sueter:'🧶', blazer:'🧥', pantalon:'👖',
+  jeans:'👖', falda:'👗', vestido:'👗', zapatos:'👠', tenis:'👟',
+  accesorio:'💍', abrigo:'🧥'
+};
+const STYLE_COMPAT = {
+  formal:['formal','elegante','minimalista'],
+  casual:['casual','boho','vintage','streetwear'],
+  streetwear:['streetwear','casual','deportivo'],
+  elegante:['elegante','formal','minimalista','boho'],
+  deportivo:['deportivo','casual','streetwear'],
+  boho:['boho','casual','vintage','elegante'],
+  minimalista:['minimalista','formal','elegante'],
+  vintage:['vintage','casual','boho']
+};
+const COLOR_COMPAT = {
+  negro:['negro','blanco','beige','gris','rojo','azul marino','rosa','morado','verde','terracota','salvia'],
+  blanco:['blanco','negro','beige','gris','azul marino','azul cielo','rosa','salvia'],
+  beige:['beige','blanco','negro','café','verde','azul marino','terracota','salvia'],
+  gris:['gris','negro','blanco','azul marino','azul cielo','salvia'],
+  'azul marino':['azul marino','blanco','beige','gris','amarillo','rojo'],
+  'azul cielo':['azul cielo','blanco','gris','beige','café'],
+  rojo:['rojo','negro','blanco','beige'],
+  verde:['verde','beige','café','blanco','negro','salvia'],
+  café:['café','beige','blanco','verde','amarillo','terracota'],
+  rosa:['rosa','blanco','negro','gris','beige'],
+  amarillo:['amarillo','negro','azul marino','café','blanco'],
+  morado:['morado','negro','blanco','gris'],
+  terracota:['terracota','negro','beige','café','blanco','amarillo'],
+  salvia:['salvia','beige','blanco','negro','café','gris']
+};
+const OUTFIT_NAMES = {
+  trabajo:{ poderosa:'Power Move', relajada:'Soft Authority', creativa:'Studio Chic', romántica:'Soft Power', misteriosa:'Noir Office', minimalista:'Clean Slate' },
+  casual:{ poderosa:'Street Boss', relajada:'Sunday Mood', creativa:'Art Day', romántica:'Garden Walk', misteriosa:'Shadow Play', minimalista:'Nothing Excess' },
+  fiesta:{ poderosa:'Main Character', relajada:'Cool Guest', creativa:'Art Party', romántica:'Golden Hour', misteriosa:'Velvet Night', minimalista:'Quiet Luxury' },
+  cita:{ poderosa:'Alpha Energy', relajada:'Effortless', creativa:'Conversation Piece', romántica:'Soft Romance', misteriosa:'Dark Allure', minimalista:'Intentional' },
+  ejercicio:{ poderosa:'Beast Mode', relajada:'Easy Flow', creativa:'Movement Art', romántica:'Glow Up', misteriosa:'Shadow Run', minimalista:'Pure Function' },
+  'evento formal':{ poderosa:'Commanding Presence', relajada:'Grace Note', creativa:'Avant Garde', romántica:'Whisper Elegance', misteriosa:'Obsidian', minimalista:'Architectural' }
+};
+
+const DEFAULT_WARDROBE = [
+  {id:1, name:'Bustier con lazos', type:'top', color:'rosa', style:'boho'},
+  {id:2, name:'Cardigan perlas', type:'sueter', color:'beige', style:'vintage'},
+  {id:3, name:'Vestido abullonado', type:'vestido', color:'salvia', style:'boho'},
+  {id:4, name:'Chaqueta cuello piel', type:'abrigo', color:'rosa', style:'vintage'},
+  {id:5, name:'Falda tableada', type:'falda', color:'gris', style:'casual'},
+  {id:6, name:'Blusa encaje volantes', type:'blusa', color:'blanco', style:'boho'},
+  {id:7, name:'Suéter cordón lateral', type:'sueter', color:'rosa', style:'casual'},
+  {id:8, name:'Vestido doll con lazo', type:'vestido', color:'rosa', style:'elegante'},
+  {id:9, name:'Jeans detalle lazos', type:'jeans', color:'azul cielo', style:'casual'},
+  {id:10, name:'Cárdigan de ochos', type:'sueter', color:'beige', style:'casual'},
+  {id:11, name:'Lazo para el cabello', type:'accesorio', color:'rosa', style:'boho'},
+  {id:12, name:'Falda de tul', type:'falda', color:'beige', style:'elegante'},
+  {id:13, name:'Top corazón tejido', type:'top', color:'salvia', style:'casual'},
+  {id:14, name:'Abrigo botones madera', type:'abrigo', color:'beige', style:'casual'},
+  {id:15, name:'Top bordado suizo', type:'top', color:'blanco', style:'boho'},
+  {id:16, name:'Falda pana botones', type:'falda', color:'café', style:'vintage'},
+  {id:17, name:'Blusa cuello lazada', type:'blusa', color:'rosa', style:'elegante'},
+  {id:18, name:'Bolso perlas', type:'accesorio', color:'negro', style:'elegante'},
+  {id:19, name:'Cárdigan terciopelo', type:'sueter', color:'negro', style:'boho'},
+  {id:20, name:'Zapatos Mary Jane', type:'zapatos', color:'negro', style:'vintage'},
+  {id:21, name:'Top seda y encaje', type:'top', color:'blanco', style:'elegante'},
+  {id:22, name:'Falda estampado floral', type:'falda', color:'salvia', style:'boho'},
+  {id:23, name:'Pantalón talle alto', type:'pantalon', color:'beige', style:'formal'},
+  {id:24, name:'Calcetas con encaje', type:'accesorio', color:'blanco', style:'boho'},
+  {id:25, name:'Suéter suave lila', type:'sueter', color:'morado', style:'casual'},
+  {id:26, name:'Zapatos punta lazo', type:'zapatos', color:'rosa', style:'elegante'},
+  {id:27, name:'Diadema perlas', type:'accesorio', color:'blanco', style:'elegante'},
+  {id:28, name:'Pantalón suave punto', type:'pantalon', color:'gris', style:'deportivo'},
+  {id:29, name:'Abrigo corto imperio', type:'abrigo', color:'rosa', style:'elegante'},
+  {id:30, name:'Tenis blancos piel', type:'tenis', color:'blanco', style:'streetwear'}
+];
+const DEFAULT_WARDROBE_SIGNATURE = JSON.stringify(DEFAULT_WARDROBE);
+
+let outfitHistory = JSON.parse(localStorage.getItem('ximes_closet_history') || '[]');
+let ctx = { ocasion:'', clima:'', vibe:'' };
+let currentOutfit = null;
+
+let wardrobe = JSON.parse(localStorage.getItem('ximes_closet_wardrobe') || 'null');
+const storedWardrobeSignature = localStorage.getItem('ximes_closet_wardrobe_signature');
+if (!wardrobe || storedWardrobeSignature !== DEFAULT_WARDROBE_SIGNATURE) {
+  wardrobe = DEFAULT_WARDROBE.slice();
+  saveWardrobe();
+}
+
+function saveWardrobe() { 
+  localStorage.setItem('ximes_closet_wardrobe', JSON.stringify(wardrobe));
+  localStorage.setItem('ximes_closet_wardrobe_signature', DEFAULT_WARDROBE_SIGNATURE);
+}
+function saveHistoryData() { localStorage.setItem('ximes_closet_history', JSON.stringify(outfitHistory)); }
+
+/* ─── TABS ─── */
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  btn.classList.add('active');
+  if (name === 'history') renderHistory();
+}
+
+/* ─── WARDROBE ─── */
+function addClothing() {
+  const name = document.getElementById('new-name').value.trim();
+  const type = document.getElementById('new-type').value;
+  const color = document.getElementById('new-color').value;
+  const style = document.getElementById('new-style').value;
+  if (!name || !type || !color || !style) { alert('Por favor completa todos los campos.'); return; }
+  wardrobe.push({ id: Date.now(), name, type, color, style });
+  saveWardrobe(); renderWardrobe();
+  document.getElementById('new-name').value = '';
+  ['new-type','new-color','new-style'].forEach(id => document.getElementById(id).value = '');
+}
+function removeItem(id) {
+  wardrobe = wardrobe.filter(i => i.id !== id);
+  saveWardrobe(); renderWardrobe();
+}
+function renderWardrobe() {
+  const grid = document.getElementById('wardrobe-grid');
+  const empty = document.getElementById('empty-wardrobe');
+  const badge = document.getElementById('count-badge');
+  badge.textContent = '(' + wardrobe.length + ')';
+  if (!wardrobe.length) { grid.innerHTML = ''; empty.style.display = 'flex'; return; }
+  empty.style.display = 'none';
+  grid.innerHTML = wardrobe.map(item => `
+    <div class="clothing-card">
+      <span class="c-emoji">${EMOJI_MAP[item.type]||'👔'}</span>
+      <div class="c-name">${item.name}</div>
+      <div class="c-meta">${item.color} · ${item.type}</div>
+      <span class="style-pill">${item.style}</span>
+      <div><button class="btn-sm-danger" onclick="removeItem(${item.id})">Eliminar</button></div>
+    </div>`).join('');
+}
+
+/* ─── PILLS ─── */
+document.addEventListener('click', e => {
+  if (e.target.classList.contains('pill')) {
+    const group = e.target.dataset.group;
+    document.querySelectorAll(`[data-group="${group}"]`).forEach(p => p.classList.remove('active'));
+    e.target.classList.add('active');
+    ctx[group] = e.target.dataset.val;
+  }
+});
+
+/* ─── NEURAL BARS INIT ─── */
+function initBars() {
+  const cont = document.getElementById('neural-bars');
+  cont.innerHTML = Array(20).fill(0).map(() => `<div class="n-bar" style="height:4px;"></div>`).join('');
+}
+function animateBars(vec) {
+  const bars = document.getElementById('neural-bars').querySelectorAll('.n-bar');
+  bars.forEach((b, i) => {
+    const v = Math.abs(vec[i] || 0);
+    const h = Math.round(4 + v * 36);
+    const alpha = 0.2 + v * 0.8;
+    b.style.height = h + 'px';
+    b.style.background = `rgba(91,140,133,${alpha})`;
+    b.style.transitionDelay = (i * 0.025) + 's';
+  });
+}
+
+/* ─── NEURAL MATH ─── */
+function computeEmbedding(items, context) {
+  const vec = new Array(20).fill(0);
+  const styleMap = {formal:0,elegante:1,casual:2,streetwear:3,deportivo:4,boho:5,minimalista:6,vintage:7};
+  const colorMap = {negro:8,blanco:9,beige:10,gris:11,'azul marino':12,rojo:13,verde:14,rosa:15,café:16,amarillo:17,terracota:18,salvia:19};
+  items.forEach(item => {
+    if (styleMap[item.style] !== undefined) vec[styleMap[item.style]] += 1;
+    if (colorMap[item.color] !== undefined) vec[colorMap[item.color]] += 1;
+  });
+  const ctxBoost = { trabajo:[0,1,6], casual:[2,5], fiesta:[1,7], ejercicio:[4], 'evento formal':[0,1], cita:[1,5,7] };
+  (ctxBoost[context.ocasion]||[]).forEach(i => { vec[i] += 2; });
+  const norm = Math.sqrt(vec.reduce((s,v)=>s+v*v,0)) || 1;
+  return vec.map(v => v/norm);
+}
+
+function scoreOutfit(pieces, context) {
+  let score = 72;
+  const styles = [...new Set(pieces.map(p=>p.style))];
+  const colors = pieces.map(p=>p.color);
+  styles.forEach(s => styles.forEach(s2 => {
+    if (s !== s2) score += (STYLE_COMPAT[s]||[]).includes(s2) ? 5 : -8;
+  }));
+  colors.forEach(c => colors.forEach(c2 => {
+    if (c !== c2) score += (COLOR_COMPAT[c]||[]).includes(c2) ? 3 : -4;
+  }));
+  const ocasionStyles = { trabajo:['formal','elegante','minimalista'], casual:['casual','streetwear','boho','vintage'],
+    fiesta:['elegante','formal'], ejercicio:['deportivo'], 'evento formal':['formal','elegante'], cita:['elegante','boho','romántico'] };
+  (ocasionStyles[context.ocasion]||[]).forEach(s => pieces.forEach(p => { if(p.style===s) score+=6; }));
+  const climaTypes = { caluroso:['top','blusa','vestido','falda','tenis'], templado:['blusa','sueter','jeans','zapatos','tenis'],
+    fresco:['sueter','blazer','pantalon','abrigo'], frío:['abrigo','sueter','pantalon'], lluvioso:['abrigo','sueter','pantalon'] };
+  (climaTypes[context.clima]||[]).forEach(t => pieces.forEach(p => { if(p.type===t) score+=4; }));
+  return Math.min(99, Math.max(55, Math.round(score)));
+}
+
+function pickOutfit() {
+  const topTypes = ['top','blusa','sueter','blazer','vestido'];
+  const bottomTypes = ['pantalon','jeans','falda'];
+  const shoeTypes = ['zapatos','tenis'];
+  const layerTypes = ['abrigo','accesorio'];
+  const rnd = arr => arr.length ? arr[Math.floor(Math.random()*arr.length)] : null;
+  const byType = types => wardrobe.filter(i => types.includes(i.type));
+  let out = [];
+  const top = rnd(byType(topTypes)); if (top) out.push(top);
+  if (!top || !['vestido'].includes(top?.type)) { const b = rnd(byType(bottomTypes)); if(b) out.push(b); }
+  const sh = rnd(byType(shoeTypes)); if(sh) out.push(sh);
+  if (['frío','fresco','lluvioso'].includes(ctx.clima)) { const l = rnd(byType(layerTypes)); if(l) out.push(l); }
+  return out.filter(Boolean);
+}
+
+/* ─── GENERATE ─── */
+async function generateOutfit() {
+  if (wardrobe.length < 2) { alert('Necesitas al menos 2 prendas en tu armario.'); return; }
+  const context = { ocasion: ctx.ocasion||'casual', clima: ctx.clima||'templado', vibe: ctx.vibe||'relajada' };
+  document.getElementById('result-placeholder').style.display = 'none';
+  const resultEl = document.getElementById('outfit-result');
+  resultEl.classList.add('show');
+  const pieces = pickOutfit();
+  if (!pieces.length) { alert('No hay suficientes prendas.'); return; }
+  const score = scoreOutfit(pieces, context);
+  const nameMap = OUTFIT_NAMES[context.ocasion] || OUTFIT_NAMES.casual;
+  const outfitName = nameMap[context.vibe] || 'Signature Look';
+  document.getElementById('outfit-name').textContent = outfitName;
+  document.getElementById('score-num').textContent = score + '%';
+  document.getElementById('pieces-row').innerHTML = pieces.map(p =>
+    `<div class="piece-chip"><span class="pe">${EMOJI_MAP[p.type]||'👔'}</span><span class="pn">${p.name}</span></div>`
+  ).join('');
+  const emb = computeEmbedding(pieces, context);
+  animateBars(emb);
+  currentOutfit = { name: outfitName, score, pieces, context };
+  const saveBtn = document.getElementById('save-btn');
+  saveBtn.textContent = 'Guardar outfit'; saveBtn.style.background = '';
+  document.getElementById('ai-text-content').textContent = '';
+  document.getElementById('loading-dots').style.display = 'inline-flex';
+
+  const prompt = `Eres un estilista de moda sofisticado. Analiza este outfit en 3-4 oraciones elegantes, en español, tono editorial de revista de lujo. 
+
+Outfit: ${pieces.map(p=>`${p.name} (${p.color}, estilo ${p.style})`).join(', ')}.
+Ocasión: ${context.ocasion}. Clima: ${context.clima}. Vibe: ${context.vibe}.
+Compatibilidad neural: ${score}%.
+
+Explica brevemente por qué las prendas funcionan juntas, cómo se adaptan a la ocasión y el clima, y da un consejo de estilismo. Sin asteriscos ni markdown. Tono poético pero preciso.`;
+
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:1000,
+        messages:[{role:'user', content:prompt}]
+      })
+    });
+    const data = await resp.json();
+    const text = data.content?.map(b=>b.text||'').join('') || 'Análisis no disponible.';
+    document.getElementById('loading-dots').style.display = 'none';
+    document.getElementById('ai-text-content').textContent = text;
+    if (currentOutfit) currentOutfit.analysis = text;
+  } catch {
+    document.getElementById('loading-dots').style.display = 'none';
+    document.getElementById('ai-text-content').textContent =
+      'La red neuronal ha seleccionado esta combinación basándose en compatibilidad cromática y alineación estilística óptima para tu ocasión.';
+  }
+}
+
+/* ─── SAVE ─── */
+function saveOutfit() {
+  if (!currentOutfit) return;
+  outfitHistory.unshift({
+    ...currentOutfit,
+    date: new Date().toLocaleDateString('es-MX',{day:'2-digit',month:'short',year:'numeric'})
+  });
+  saveHistoryData();
+  const btn = document.getElementById('save-btn');
+  btn.textContent = '✓ Guardado';
+  btn.style.background = '#5B8C85';
+}
+
+/* ─── HISTORY ─── */
+function renderHistory() {
+  const list = document.getElementById('history-list');
+  const empty = document.getElementById('empty-history');
+  if (!outfitHistory.length) { list.innerHTML = ''; empty.style.display = 'flex'; return; }
+  empty.style.display = 'none';
+  list.innerHTML = outfitHistory.map(h => `
+    <div class="history-item">
+      <div class="h-emojis">${(h.pieces||[]).map(p=>EMOJI_MAP[p.type]||'👔').join('')}</div>
+      <div class="h-info">
+        <div class="h-name">${h.name}</div>
+        <div class="h-meta">${h.date}</div>
+        <div class="h-ctx">
+          ${h.context?.ocasion ? `<span class="h-tag">${h.context.ocasion}</span>`:''}
+          ${h.context?.clima ? `<span class="h-tag">${h.context.clima}</span>`:''}
+          ${h.context?.vibe ? `<span class="h-tag">${h.context.vibe}</span>`:''}
+        </div>
+      </div>
+      <div class="h-score">${h.score}%</div>
+    </div>`).join('');
+}
+
+/* ─── INIT ─── */
+initBars();
+renderWardrobe();
+</script>
+</body>
+</html>
